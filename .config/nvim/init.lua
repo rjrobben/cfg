@@ -12,6 +12,7 @@ vim.keymap.set('n', '<leader>o', ':update<CR> :source<CR>')
 vim.keymap.set({ 'n', 'v', 'x' }, '<leader>y', '"+y<CR>')
 vim.keymap.set({ 'n', 'v', 'x' }, '<leader>d', '"+d<CR>')
 vim.keymap.set({ 'n', 'v', 'x' }, '<leader>w', ':w<CR>')
+vim.keymap.set({ 'n', 'v', 'x' }, '<leader>q', ':q<CR>')
 
 
 vim.pack.add({
