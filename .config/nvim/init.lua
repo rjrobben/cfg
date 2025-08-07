@@ -19,6 +19,8 @@ vim.pack.add({
 	{ src = "https://github.com/echasnovski/mini.pick" },
 	{ src = "https://github.com/echasnovski/mini.files" },
 	{ src = "https://github.com/echasnovski/mini.icons" },
+	{ src = "https://github.com/echasnovski/mini.diff" },
+	{ src = "https://github.com/echasnovski/mini.sessions" },
 	{ src = "https://github.com/stevearc/oil.nvim" },
 	{ src = "https://github.com/nvim-treesitter/nvim-treesitter" },
 	{ src = "https://github.com/neovim/nvim-lspconfig" },
@@ -27,6 +29,8 @@ vim.pack.add({
 	{ src = "https://github.com/julienvincent/nvim-paredit" },
 	{ src = "https://github.com/yorickpeterse/vim-paper" },
 	{ src = "https://github.com/thesimonho/kanagawa-paper.nvim" },
+	{ src = "https://github.com/sainnhe/sonokai" },
+	{ src = "https://github.com/loctvl842/monokai-pro.nvim" },
 })
 
 
@@ -51,8 +55,12 @@ local paredit = require("nvim-paredit")
 paredit.setup({
 	-- Change some keys
 	keys = {
-		["<localleader>w"] = { paredit.api.select_around_form, "Select around form" },
-		["<localleader>W"] = { paredit.api.select_around_top_level_form, "Select around form" },
+		["<C-w>"] = { paredit.api.select_around_form, "Select around form" },
+		["<C-W"] = { paredit.api.select_around_top_level_form, "Select around top level form" },
+		["<C-M-l>"] = { paredit.api.slurp_forwards, "Slurp forward" },
+		["<C-M-h>"] = { paredit.api.barf_forwards, "Barf forward" },
+		["<D-S-h>"] = { paredit.api.slurp_backwards, "Slurp backward" },
+		["<D-S-l>"] = { paredit.api.barf_backwards, "Barf backward" },
 	},
 })
 
@@ -72,7 +80,9 @@ require "oil".setup({
 
 require "mini.pick".setup()
 require "mini.files".setup()
-require "mini.icons".setup({style = 'ascii'})
+require "mini.icons".setup({ style = 'ascii' })
+require "mini.diff".setup()
+require "mini.sessions".setup()
 
 vim.keymap.set('n', '<leader>b', ":Oil<CR>")
 
@@ -83,7 +93,51 @@ vim.keymap.set('n', '<leader>h', ":Pick help<CR>")
 vim.keymap.set('n', '<leader>e', ":lua MiniFiles.open()<CR>")
 
 
+vim.keymap.set('n', '<leader>R', ":lua MiniSessions.write()<CR>")
+vim.keymap.set('n', '<leader>r', ":lua MiniSessions.read()<CR>")
+
+
+vim.keymap.set('n', '<leader><Tab>', ":bn<CR>")
+vim.keymap.set('n', '<leader><S-Tab>', ":bp<CR>")
+
+
 -- color theme
+
+
+require("monokai-pro").setup({
+	filter = "light",
+	overridePalette = function(filter)
+		return {
+			dark2 = "#d2c9c4",
+			dark1 = "#eee5de",
+			background = "#f8efe7",
+			text = "#2c232e",
+			accent1 = "#ce4770",
+			accent2 = "#d4572b",
+			accent3 = "#b16803",
+			accent4 = "#218871",
+			accent5 = "#2473b6",
+			accent6 = "#6851a2",
+			dimmed1 = "#72696d",
+			dimmed2 = "#92898a",
+			dimmed3 = "#a59c9c",
+			dimmed4 = "#beb5b3",
+			dimmed5 = "#d2c9c4",
+			panel = "#fdf7f3",
+			light = "#fffcfa",
+		}
+	end,
+
+	override = function(c)
+		return {
+			CursorLine = { bg = c.base.dimmed3 },  -- This affects MiniPickMatchCurrent
+			NormalFloat = { bg = c.base.background, fg = c.base.text },  -- MiniPickNormal links to this
+			Visual = { bg = c.base.dimmed4 },  -- For MiniPickMatchMarked
+			DiagnosticFloatingHint = { fg = c.base.accent2 },  -- For MiniPickMatchRanges
+		}
+	end,
+})
+
 vim.o.background = "light"
-vim.cmd("colorscheme paper")
+vim.cmd("colorscheme monokai-pro")
 vim.o.termguicolors = true
