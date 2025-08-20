@@ -7,12 +7,16 @@ vim.g.mapleader = " "
 vim.g.maplocalleader = ","
 
 
+vim.keymap.set({ 'n', 'v', 'x' }, '<leader>v', ':e $MYVIMRC<CR>')
 vim.keymap.set('n', '<leader>o', ':update<CR> :source<CR>')
 
 vim.keymap.set({ 'n', 'v', 'x' }, '<leader>y', '"+y<CR>')
 vim.keymap.set({ 'n', 'v', 'x' }, '<leader>d', '"+d<CR>')
 vim.keymap.set({ 'n', 'v', 'x' }, '<leader>w', ':w<CR>')
 vim.keymap.set({ 'n', 'v', 'x' }, '<leader>q', ':q<CR>')
+
+vim.keymap.set({'v'}, '<leader>F', ':/%V')
+vim.keymap.set({'t'}, '<Esc>', '<C-\\><C-n>')
 
 
 vim.pack.add({
@@ -21,6 +25,7 @@ vim.pack.add({
 	{ src = "https://github.com/echasnovski/mini.icons" },
 	{ src = "https://github.com/echasnovski/mini.diff" },
 	{ src = "https://github.com/echasnovski/mini.sessions" },
+	{ src = "https://github.com/echasnovski/mini.comment" },
 	{ src = "https://github.com/stevearc/oil.nvim" },
 	{ src = "https://github.com/nvim-treesitter/nvim-treesitter" },
 	{ src = "https://github.com/neovim/nvim-lspconfig" },
@@ -55,12 +60,12 @@ local paredit = require("nvim-paredit")
 paredit.setup({
 	-- Change some keys
 	keys = {
-		["<C-w>"] = { paredit.api.select_around_form, "Select around form" },
-		["<C-W"] = { paredit.api.select_around_top_level_form, "Select around top level form" },
-		["<C-M-l>"] = { paredit.api.slurp_forwards, "Slurp forward" },
-		["<C-M-h>"] = { paredit.api.barf_forwards, "Barf forward" },
-		["<D-S-h>"] = { paredit.api.slurp_backwards, "Slurp backward" },
-		["<D-S-l>"] = { paredit.api.barf_backwards, "Barf backward" },
+		["<localleader>w"] = { paredit.api.select_around_form, "Select around form" },
+		["<localleader>W"] = { paredit.api.select_around_top_level_form, "Select around top level form" },
+		["<localleader>ml"] = { paredit.api.slurp_forwards, "Slurp forward" },
+		["<localleader>mh"] = { paredit.api.barf_forwards, "Barf forward" },
+		["<localleader>mj"] = { paredit.api.slurp_backwards, "Slurp backward" },
+		["<localleader>mk"] = { paredit.api.barf_backwards, "Barf backward" },
 	},
 })
 
@@ -69,12 +74,23 @@ vim.api.nvim_create_autocmd('FileType', {
 	callback = function() vim.treesitter.start() end,
 })
 
+-- conjure
+vim.g["conjure#client#sql#stdio#command"] = "psql postgresql://lawben-search:lawben-search@pop-os.tailbbca68.ts.net:5433/lawben-search_dev_v2"
+vim.g["conjure#log#wrap"] = true
 
 -- file explorer
 require "oil".setup({
 	columns = {
 		“permissions”,
 		“size”,
+	},
+	keymaps = {
+		['yp'] = {
+			desc = 'Copy filepath to system clipboard',
+			callback = function()
+				require('oil.actions').yank_entry.callback()
+			end,
+		},
 	},
 })
 
@@ -83,6 +99,7 @@ require "mini.files".setup()
 require "mini.icons".setup({ style = 'ascii' })
 require "mini.diff".setup()
 require "mini.sessions".setup()
+require "mini.comment".setup()
 
 vim.keymap.set('n', '<leader>b', ":Oil<CR>")
 
@@ -93,7 +110,7 @@ vim.keymap.set('n', '<leader>h', ":Pick help<CR>")
 vim.keymap.set('n', '<leader>e', ":lua MiniFiles.open()<CR>")
 
 
-vim.keymap.set('n', '<leader>R', ":lua MiniSessions.write()<CR>")
+vim.keymap.set('n', '<leader>R', ":lua MiniSessions.write('Session.vim')<CR>")
 vim.keymap.set('n', '<leader>r', ":lua MiniSessions.read()<CR>")
 
 
@@ -131,9 +148,9 @@ require("monokai-pro").setup({
 	override = function(c)
 		return {
 			CursorLine = { bg = c.base.dimmed3 },  -- This affects MiniPickMatchCurrent
-			NormalFloat = { bg = c.base.background, fg = c.base.text },  -- MiniPickNormal links to this
-			Visual = { bg = c.base.dimmed4 },  -- For MiniPickMatchMarked
-			DiagnosticFloatingHint = { fg = c.base.accent2 },  -- For MiniPickMatchRanges
+			NormalFloat = { bg = c.base.background, fg = c.base.text }, -- MiniPickNormal links to this
+			Visual = { bg = c.base.dimmed4 },      -- For MiniPickMatchMarked
+			DiagnosticFloatingHint = { fg = c.base.accent2 }, -- For MiniPickMatchRanges
 		}
 	end,
 })
