@@ -15,8 +15,8 @@ vim.keymap.set({ 'n', 'v', 'x' }, '<leader>d', '"+d<CR>')
 vim.keymap.set({ 'n', 'v', 'x' }, '<leader>w', ':w<CR>')
 vim.keymap.set({ 'n', 'v', 'x' }, '<leader>q', ':q<CR>')
 
-vim.keymap.set({'v'}, '<leader>F', ':/%V')
-vim.keymap.set({'t'}, '<Esc>', '<C-\\><C-n>')
+vim.keymap.set({ 'v' }, '<leader>F', ':/%V')
+vim.keymap.set({ 't' }, '<Esc>', '<C-\\><C-n>')
 
 
 vim.pack.add({
@@ -36,6 +36,7 @@ vim.pack.add({
 	{ src = "https://github.com/thesimonho/kanagawa-paper.nvim" },
 	{ src = "https://github.com/sainnhe/sonokai" },
 	{ src = "https://github.com/loctvl842/monokai-pro.nvim" },
+	{ src = "https://github.com/mrcjkb/rustaceanvim" },
 })
 
 
@@ -51,9 +52,28 @@ vim.api.nvim_create_autocmd('LspAttach', {
 vim.cmd("set completeopt+=noselect")
 
 
-vim.lsp.enable({ "lua_ls", "tinymist", "clojure_lsp" })
+vim.lsp.enable({ "lua_ls", "tinymist", "clojure_lsp", "rust-analyzer" })
 
 vim.keymap.set('n', '<leader>lf', vim.lsp.buf.format)
+
+-- rust
+require('nvim-treesitter.configs').setup {
+  ensure_installed = {"rust", "toml" },
+  auto_install = true,
+  highlight = {
+    enable = true,
+    additional_vim_regex_highlighting=false,
+  },
+  ident = { enable = true }, 
+  rainbow = {
+    enable = true,
+    extended_mode = true,
+    max_file_lines = nil,
+  }
+}
+
+vim.g['conjure#extract#tree_sitter#enabled'] = true
+
 
 -- paredit
 local paredit = require("nvim-paredit")
@@ -75,7 +95,8 @@ vim.api.nvim_create_autocmd('FileType', {
 })
 
 -- conjure
-vim.g["conjure#client#sql#stdio#command"] = "psql postgresql://lawben-search:lawben-search@pop-os.tailbbca68.ts.net:5433/lawben-search_dev_v2"
+vim.g["conjure#client#sql#stdio#command"] =
+"psql postgresql://lawben-search:lawben-search@pop-os.tailbbca68.ts.net:5433/lawben-search_dev_v2"
 vim.g["conjure#log#wrap"] = true
 
 -- file explorer
