@@ -95,8 +95,6 @@ vim.api.nvim_create_autocmd('FileType', {
 })
 
 -- conjure
-vim.g["conjure#client#sql#stdio#command"] =
-"psql postgresql://lawben-search:lawben-search@pop-os.tailbbca68.ts.net:5433/lawben-search_dev_v2"
 vim.g["conjure#log#wrap"] = true
 
 -- file explorer
