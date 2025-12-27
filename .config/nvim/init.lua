@@ -31,62 +31,105 @@ vim.pack.add({
 	{ src = "https://github.com/neovim/nvim-lspconfig" },
 	{ src = "https://github.com/chomosuke/typst-preview.nvim" },
 	{ src = "https://github.com/Olical/conjure" },
-	{ src = "https://github.com/julienvincent/nvim-paredit" },
-	{ src = "https://github.com/yorickpeterse/vim-paper" },
-	{ src = "https://github.com/thesimonho/kanagawa-paper.nvim" },
-	{ src = "https://github.com/sainnhe/sonokai" },
+	-- { src = "https://github.com/julienvincent/nvim-paredit" },
 	{ src = "https://github.com/loctvl842/monokai-pro.nvim" },
 	{ src = "https://github.com/mrcjkb/rustaceanvim" },
+	{ src = "https://github.com/L3MON4D3/LuaSnip" },
+	{ src = "https://github.com/bakpakin/fennel.vim" },
+	{ src = "https://github.com/guns/vim-sexp" },
+	{ src = "https://github.com/tpope/vim-sexp-mappings-for-regular-people" },
+	{ src = "https://github.com/kylechui/nvim-surround" },
+	{ src = "https://github.com/HiPhish/rainbow-delimiters.nvim" },
+	{ src = "https://github.com/Olical/nfnl" },
+
 })
 
 
 -- lsp
 vim.api.nvim_create_autocmd('LspAttach', {
-	callback = function(ev)
-		local client = vim.lsp.get_client_by_id(ev.data.client_id)
+	group = vim.api.nvim_create_augroup('my.lsp', {}),
+	callback = function(args)
+		local client = assert(vim.lsp.get_client_by_id(args.data.client_id))
+		if client:supports_method('textDocument/implementation') then
+			-- Create a keymap for vim.lsp.buf.implementation ...
+		end
+		-- Enable auto-completion. Note: Use CTRL-Y to select an item. |complete_CTRL-Y|
 		if client:supports_method('textDocument/completion') then
-			vim.lsp.completion.enable(true, client.id, ev.buf, { autotrigger = true })
+			-- Optional: trigger autocompletion on EVERY keypress. May be slow!
+			local chars = {}; for i = 32, 126 do table.insert(chars, string.char(i)) end
+			client.server_capabilities.completionProvider.triggerCharacters = chars
+			vim.lsp.completion.enable(true, client.id, args.buf, { autotrigger = true })
+		end
+		-- Auto-format ("lint") on save.
+		-- Usually not needed if server supports "textDocument/willSaveWaitUntil".
+		if not client:supports_method('textDocument/willSaveWaitUntil')
+		    and client:supports_method('textDocument/formatting') then
+			vim.api.nvim_create_autocmd('BufWritePre', {
+				group = vim.api.nvim_create_augroup('my.lsp', { clear = false }),
+				buffer = args.buf,
+				callback = function()
+					vim.lsp.buf.format({ bufnr = args.buf, id = client.id, timeout_ms = 1000 })
+				end,
+			})
 		end
 	end,
 })
-vim.cmd("set completeopt+=noselect")
+
+vim.opt.completeopt = { "menu", "menuone", "noselect" }
 
 
-vim.lsp.enable({ "lua_ls", "tinymist", "clojure_lsp", "rust-analyzer" })
+vim.lsp.enable({ "lua_ls", "tinymist", "clojure_lsp", "rust_analyzer", "fennel_language_server" })
 
 vim.keymap.set('n', '<leader>lf', vim.lsp.buf.format)
 
+
 -- rust
 require('nvim-treesitter.configs').setup {
-  ensure_installed = {"rust", "toml" },
-  auto_install = true,
-  highlight = {
-    enable = true,
-    additional_vim_regex_highlighting=false,
-  },
-  ident = { enable = true }, 
-  rainbow = {
-    enable = true,
-    extended_mode = true,
-    max_file_lines = nil,
-  }
+	ensure_installed = { "rust", "toml" },
+	auto_install = true,
+	highlight = {
+		enable = true,
+		additional_vim_regex_highlighting = false,
+	},
+	ident = { enable = true },
+	rainbow = {
+		enable = true,
+		extended_mode = true,
+		max_file_lines = nil,
+	}
 }
 
 vim.g['conjure#extract#tree_sitter#enabled'] = true
 
 
 -- paredit
-local paredit = require("nvim-paredit")
-paredit.setup({
-	-- Change some keys
-	keys = {
-		["<localleader>w"] = { paredit.api.select_around_form, "Select around form" },
-		["<localleader>W"] = { paredit.api.select_around_top_level_form, "Select around top level form" },
-		["<localleader>ml"] = { paredit.api.slurp_forwards, "Slurp forward" },
-		["<localleader>mh"] = { paredit.api.barf_forwards, "Barf forward" },
-		["<localleader>mj"] = { paredit.api.slurp_backwards, "Slurp backward" },
-		["<localleader>mk"] = { paredit.api.barf_backwards, "Barf backward" },
-	},
+-- local paredit = require("nvim-paredit")
+-- paredit.setup({
+-- 	-- Change some keys
+-- 	keys = {
+-- 		["<localleader>w"] = { paredit.api.select_around_form, "Select around form" },
+-- 		["<localleader>W"] = { paredit.api.select_around_top_level_form, "Select around top level form" },
+-- 		["<localleader>ml"] = { paredit.api.slurp_forwards, "Slurp forward" },
+-- 		["<localleader>mh"] = { paredit.api.barf_forwards, "Barf forward" },
+-- 		["<localleader>mj"] = { paredit.api.slurp_backwards, "Slurp backward" },
+-- 		["<localleader>mk"] = { paredit.api.barf_backwards, "Barf backward" },
+-- 	},
+-- })
+
+
+require("nvim-surround").setup()
+
+-- vim-sexp config
+vim.g.sexp_filetypes = "clojure,scheme,lisp,fennel"
+
+-- Fennel formatting on save
+vim.api.nvim_create_autocmd("BufWritePost", {
+	pattern = "*.fnl",
+	callback = function()
+		vim.cmd("!fnlfmt --fix %")
+		vim.cmd("e")
+		vim.cmd("NfnlCompileFile")
+	end,
 })
 
 vim.api.nvim_create_autocmd('FileType', {
@@ -137,6 +180,71 @@ vim.keymap.set('n', '<leader><Tab>', ":bn<CR>")
 vim.keymap.set('n', '<leader><S-Tab>', ":bp<CR>")
 
 
+
+-- inkscape
+--
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "typ", "typst" }, -- match your filetype
+	callback = function()
+		vim.keymap.set('i', '<C-f>', function()
+			local line = vim.fn.getline('.')
+			local root = vim.fn.expand('%:p:h') -- directory of current .typ file
+			vim.cmd('silent exec ".!inkscape-figures create \\"' ..
+				line .. '\\" \\"' .. root .. '/figures/\\""')
+			vim.cmd('w')
+		end, { buffer = true, noremap = true, silent = true })
+
+		vim.keymap.set('n', '<C-f>', function()
+			local root = vim.fn.expand('%:p:h')
+			vim.cmd('silent exec "!inkscape-figures edit \\"' .. root .. '/figures/\\" > /dev/null 2>&1 &"')
+			vim.cmd('redraw!')
+		end, { buffer = true, noremap = true, silent = true })
+	end
+})
+
+
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = { "markdown", "md", "pandoc" }, -- match markdown filetypes
+	callback = function()
+		-- Create new figure in Insert mode
+		vim.keymap.set('i', '<C-f>', function()
+			local line = vim.fn.getline('.')
+			local root = vim.fn.expand('%:p:h') -- directory of current .md file
+			-- Added --format markdown
+			vim.cmd('silent exec ".!inkscape-figures create --format markdown \\"' ..
+				line .. '\\" \\"' .. root .. '/figures/\\""')
+			vim.cmd('w')
+		end, { buffer = true, noremap = true, silent = true })
+
+		-- Edit existing figures in Normal mode
+		vim.keymap.set('n', '<C-f>', function()
+			local root = vim.fn.expand('%:p:h')
+			-- Added --format markdown (optional for 'edit' but good for consistency depending on how the tool parses args)
+			vim.cmd('silent exec "!inkscape-figures edit \\"' .. root .. '/figures/\\" > /dev/null 2>&1 &"')
+			vim.cmd('redraw!')
+		end, { buffer = true, noremap = true, silent = true })
+	end
+})
+
+-- LuaSnip
+--
+require("luasnip").setup({ enable_autosnippets = true })
+require("luasnip.loaders.from_lua").load({ paths = "~/.config/nvim/snippets/" })
+require("luasnip.loaders.from_vscode").lazy_load({ paths = { "~/.config/nvim/snippets" } })
+
+local ls = require("luasnip")
+local map = vim.keymap.set
+
+map({ "i", "s" }, "<C-K>", function() ls.expand_or_jump(1) end, { silent = true })
+map({ "i", "s" }, "<C-L>", function() ls.jump(1) end, { silent = true })
+map({ "i", "s" }, "<C-J>", function() ls.jump(-1) end, { silent = true })
+
+vim.keymap.set({ "i", "s" }, "<C-E>", function()
+	if ls.choice_active() then
+		ls.change_choice(1)
+	end
+end, { silent = true })
+
 -- color theme
 
 
@@ -177,3 +285,8 @@ require("monokai-pro").setup({
 vim.o.background = "light"
 vim.cmd("colorscheme monokai-pro")
 vim.o.termguicolors = true
+
+
+-- custom plugin
+require("hello").setup()
+require("history").setup()
