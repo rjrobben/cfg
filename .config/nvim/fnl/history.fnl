@@ -1,40 +1,48 @@
 (local pick (require :mini.pick))
 
-(var history [])
-(var idx 0)
+(var state {:grep {:history [] :idx 0} :files {:history [] :idx 0}})
 
-(fn history-prev []
-  (when (> (length history) 0)
-    (set idx (math.min (+ idx 1) (length history)))
-    (pick.set_picker_query (vim.split (. history idx) ""))))
+(var current nil)
 
-(fn history-next []
-  (when (> idx 1)
-    (set idx (- idx 1))
-    (pick.set_picker_query (vim.split (. history idx) ""))))
+(fn hist-prev []
+  (let [s (. state current)]
+    (when (> (length s.history) 0)
+      (set s.idx (math.min (+ s.idx 1) (length s.history)))
+      (pick.set_picker_query (vim.split (. s.history s.idx) "")))))
 
-(fn save-current []
-  (let [q (table.concat (pick.get_picker_query) "")]
-    (when (not= q "")
-      (table.insert history 1 q))))
+(fn hist-next []
+  (let [s (. state current)]
+    (when (> s.idx 1)
+      (set s.idx (- s.idx 1))
+      (pick.set_picker_query (vim.split (. s.history s.idx) "")))))
 
-(fn grep-live []
-  (set idx 0)
-  (pick.builtin.grep_live {}
-                          {:mappings {:hist_prev {:char :<C-p>
-                                                  :func history-prev}
-                                      :hist_next {:char :<C-n>
-                                                  :func history-next}}}))
+(fn open-picker [name builtin-fn]
+  (set current name)
+  (set (. state name :idx) 0)
+  (builtin-fn {}
+              {:mappings {:hist_prev {:char :<C-p> :func hist-prev}
+                          :hist_next {:char :<C-n> :func hist-next}}}))
 
 (fn setup []
   (vim.api.nvim_create_autocmd :User
                                {:pattern :MiniPickStop
                                 :callback (fn []
+                                            ;; (print (.. "current: "
+                                            ;;            (vim.inspect current)))
+                                            ;; (print (.. "query: "
+                                            ;;            (vim.inspect (pick.get_picker_query))))
                                             (let [q (pick.get_picker_query)]
-                                              (when q
+                                              (when (and current q)
                                                 (let [s (table.concat q "")]
                                                   (when (not= s "")
-                                                    (table.insert history 1 s))))))})
-  (vim.api.nvim_create_user_command :PickGrepLive grep-live {}))
+                                                    (table.insert (. state
+                                                                     current
+                                                                     :history)
+                                                                  1 s))))))})
+  (vim.api.nvim_create_user_command :PickGrepLive
+                                    #(open-picker :grep pick.builtin.grep_live)
+                                    {})
+  (vim.api.nvim_create_user_command :PickFiles
+                                    #(open-picker :files pick.builtin.files) {}))
 
-{: setup : grep-live : history : save-current}
+{: setup}

@@ -50,6 +50,31 @@ vim.api.nvim_create_autocmd('LspAttach', {
 	group = vim.api.nvim_create_augroup('my.lsp', {}),
 	callback = function(args)
 		local client = assert(vim.lsp.get_client_by_id(args.data.client_id))
+		-- Helper for mappings
+		local opts = { buffer = args.buf, silent = true }
+
+		-- === 1. GOTO MAPPINGS ===
+		-- Neovim 0.10+ Defaults:
+		-- 'gd' -> vim.lsp.buf.definition()
+		-- 'gI' -> vim.lsp.buf.implementation()
+		-- 'gy' -> vim.lsp.buf.type_definition()
+		-- 'grr' -> vim.lsp.buf.references() (Note the double 'r')
+
+		-- OVERRIDES (If you prefer the classic 'gr' behavior):
+		vim.keymap.set('n', 'gy', vim.lsp.buf.implementation, opts)
+		vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)
+		vim.keymap.set('n', 'gd', vim.lsp.buf.definition, { buffer = args.buf, desc = "Go to Definition" })
+
+		-- TypeScript Specific: "Go to Source Definition"
+		-- This prevents jumping to .d.ts files in node_modules
+		if client.name == "ts_ls" or client.name == "vtsls" then
+			vim.keymap.set('n', 'gs', function()
+				vim.lsp.buf.execute_command({
+					command = "_typescript.goToSourceDefinition",
+					arguments = { vim.api.nvim_buf_get_name(0), vim.api.nvim_win_get_cursor(0) }
+				})
+			end, opts)
+		end
 		if client:supports_method('textDocument/implementation') then
 			-- Create a keymap for vim.lsp.buf.implementation ...
 		end
@@ -62,41 +87,69 @@ vim.api.nvim_create_autocmd('LspAttach', {
 		end
 		-- Auto-format ("lint") on save.
 		-- Usually not needed if server supports "textDocument/willSaveWaitUntil".
-		if not client:supports_method('textDocument/willSaveWaitUntil')
-		    and client:supports_method('textDocument/formatting') then
-			vim.api.nvim_create_autocmd('BufWritePre', {
-				group = vim.api.nvim_create_augroup('my.lsp', { clear = false }),
-				buffer = args.buf,
-				callback = function()
-					vim.lsp.buf.format({ bufnr = args.buf, id = client.id, timeout_ms = 1000 })
-				end,
-			})
-		end
+
+		-- if not client:supports_method('textDocument/willSaveWaitUntil')
+		--     and client:supports_method('textDocument/formatting') then
+		-- 	vim.api.nvim_create_autocmd('BufWritePre', {
+		-- 		group = vim.api.nvim_create_augroup('my.lsp', { clear = false }),
+		-- 		buffer = args.buf,
+		-- 		callback = function()
+		-- 			vim.lsp.buf.format({ bufnr = args.buf, id = client.id, timeout_ms = 1000 })
+		-- 		end,
+		-- 	})
+		-- end
 	end,
 })
+
+-- 1. Set the fold method to use an expression
+vim.opt.foldmethod = "expr"
+
+-- 2. Use the built-in Lua fold expression (Better for TypeScript than the old nvim_treesitter#foldexpr)
+vim.opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
+
+-- 3. "Default No Fold": Open the file with all folds expanded
+vim.opt.foldlevel = 99
+vim.opt.foldlevelstart = 99
+vim.opt.foldenable = true
 
 vim.opt.completeopt = { "menu", "menuone", "noselect" }
 
 
-vim.lsp.enable({ "lua_ls", "tinymist", "clojure_lsp", "rust_analyzer", "fennel_language_server" })
+vim.lsp.enable({
+	"lua_ls",
+	"tinymist",
+	"clojure_lsp",
+	"rust_analyzer",
+	"fennel_language_server",
+	"postgres_lsp",
+	"ts_ls"
+
+})
 
 vim.keymap.set('n', '<leader>lf', vim.lsp.buf.format)
 
-
 -- rust
 require('nvim-treesitter.configs').setup {
-	ensure_installed = { "rust", "toml" },
+	ensure_installed = { "rust", "toml", "sql" },
 	auto_install = true,
 	highlight = {
 		enable = true,
 		additional_vim_regex_highlighting = false,
 	},
-	ident = { enable = true },
-	rainbow = {
+	indent = { enable = true, disable = { "sql" }, },
+	-- rainbow = {
+	-- 	enable = true,
+	-- 	extended_mode = true,
+	-- 	max_file_lines = nil,
+	-- },
+	incremental_selection = {
 		enable = true,
-		extended_mode = true,
-		max_file_lines = nil,
-	}
+		keymaps = {
+			init_selection = false,
+			node_incremental = "af",
+			node_decremental = "iF",
+		},
+	},
 }
 
 vim.g['conjure#extract#tree_sitter#enabled'] = true
@@ -137,6 +190,16 @@ vim.api.nvim_create_autocmd('FileType', {
 	callback = function() vim.treesitter.start() end,
 })
 
+-- Open binary files with Preview
+vim.api.nvim_create_autocmd("BufReadCmd", {
+	pattern = { "*.pdf", "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp" },
+	callback = function()
+		local filename = vim.fn.shellescape(vim.api.nvim_buf_get_name(0))
+		vim.cmd("silent !open " .. filename)
+		vim.cmd("bprevious | bdelete! #")
+	end
+})
+
 -- conjure
 vim.g["conjure#log#wrap"] = true
 
@@ -157,16 +220,30 @@ require "oil".setup({
 })
 
 require "mini.pick".setup()
+-- Override default files picker to include hidden
+MiniPick.registry.files = function()
+	return MiniPick.builtin.cli({ command = { 'rg', '--files', '--hidden' } })
+end
+
 require "mini.files".setup()
 require "mini.icons".setup({ style = 'ascii' })
 require "mini.diff".setup()
 require "mini.sessions".setup()
 require "mini.comment".setup()
 
+vim.api.nvim_create_autocmd("FileType", {
+	pattern = "ledger",
+	callback = function()
+		vim.bo.commentstring = "; %s"
+	end,
+})
+
 vim.keymap.set('n', '<leader>b', ":Oil<CR>")
 
-vim.keymap.set('n', '<leader>f', ":Pick files<CR>")
-vim.keymap.set('n', '<leader><S-f>', ":Pick grep_live<CR>")
+
+
+vim.keymap.set('n', '<leader>f', ":PickFiles<CR>")
+vim.keymap.set('n', '<leader><S-f>', ":PickGrepLive<CR>")
 vim.keymap.set('n', '<leader>h', ":Pick help<CR>")
 
 vim.keymap.set('n', '<leader>e', ":lua MiniFiles.open()<CR>")
@@ -286,6 +363,16 @@ vim.o.background = "light"
 vim.cmd("colorscheme monokai-pro")
 vim.o.termguicolors = true
 
+
+-- clerk
+local function clerk_show()
+	vim.cmd("w") -- Save the file
+	-- Construct the command with the expanded file path
+	local file_path = vim.fn.expand("%:p")
+	vim.cmd(string.format('ConjureEval (nextjournal.clerk/show! "%s")', file_path))
+end
+vim.api.nvim_create_user_command("ClerkShow", clerk_show, {})
+vim.keymap.set("n", "<localleader>cs", clerk_show, { silent = true, desc = "Show Clerk" })
 
 -- custom plugin
 require("hello").setup()
