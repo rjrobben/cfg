@@ -129,7 +129,7 @@ vim.lsp.enable({
 vim.keymap.set('n', '<leader>lf', vim.lsp.buf.format)
 
 -- rust
-require('nvim-treesitter.configs').setup {
+require('nvim-treesitter').setup {
 	ensure_installed = { "rust", "toml", "sql" },
 	auto_install = true,
 	highlight = {
